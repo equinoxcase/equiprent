@@ -47,8 +47,8 @@ function Extend({ r, onDone }: { r: any; onDone: () => void }) {
 
   useEffect(() => {
     if (!CONTRACT) return;
-    pub.readContract({ address: CONTRACT, abi, functionName: "rentals", args: [BigInt(r.id)] })
-      .then((v: any) => setChain({ end: BigInt(v[4]), rate: BigInt(v[15]) })).catch(() => setMsg("Couldn’t read the rental from the chain."));
+    pub.readContract({ address: CONTRACT, abi, functionName: "getRental", args: [BigInt(r.id)] })
+      .then((v: any) => setChain({ end: BigInt(v.end), rate: BigInt(v.rate) })).catch(() => setMsg("Couldn’t read the rental from the chain."));
   }, [r.id]);
 
   const newEnd = date ? BigInt(Math.floor(new Date(date).getTime() / 1000)) : 0n;

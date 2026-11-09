@@ -50,7 +50,7 @@ contract EquipRent is ReentrancyGuard, Pausable, Ownable {
     uint256 public nextRentalId = 1;
 
     mapping(uint256 => Equipment) public equipment;
-    mapping(uint256 => Rental) public rentals;
+    mapping(uint256 => Rental) internal rentals; // read through getRental, a 16 field public getter can fail with Stack too deep
     mapping(uint256 => uint256[]) private _accepted; // equipmentId => live (accepted, not closed) rental ids
     mapping(uint256 => uint256) private _slot; // rentalId => 1-based index in _accepted[equipmentId]
     mapping(address => uint256) public balances; // pull payments
@@ -80,6 +80,10 @@ contract EquipRent is ReentrancyGuard, Pausable, Ownable {
 
     constructor(address _arbiter) Ownable(msg.sender) {
         arbiter = _arbiter;
+    }
+
+    function getRental(uint256 id) external view returns (Rental memory) {
+        return rentals[id];
     }
 
     // ---------- Registry ----------

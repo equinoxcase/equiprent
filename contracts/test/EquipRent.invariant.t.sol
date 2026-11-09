@@ -73,11 +73,11 @@ contract Handler is Test {
 
     function requestExt(uint256 seed, uint256 extra) external {
         uint256 id = _id(seed);
-        (,,,, uint64 end,,,,,,,,,,,) = er.rentals(id);
+        uint64 end = er.getRental(id).end;
         uint256 d = 1 + extra % 3;
         (, , uint128 rate, , ) = er.equipment(1);
         uint256 value = d * rate;
-        (, , address r, , , , , , , , , , , , , ) = er.rentals(id);
+        address r = er.getRental(id).renter;
         vm.prank(r);
         er.requestExtension{value: value}(id, end + uint64(d * 1 days));
         ghostIn += value;
@@ -104,8 +104,8 @@ contract EquipRentInvariantTest is Test {
         for (uint256 i; i < 3; ++i) owed += er.balances(h.renters(i));
         uint256 escrow;
         for (uint256 i = 1; i < er.nextRentalId(); ++i) {
-            (,,,,,,, uint128 fee, uint128 dep,,,, EquipRent.Status st,, uint128 ext,) = er.rentals(i);
-            if (st != EquipRent.Status.Closed) escrow += uint256(fee) + dep + ext;
+            EquipRent.Rental memory rr = er.getRental(i);
+            if (rr.status != EquipRent.Status.Closed) escrow += uint256(rr.fee) + rr.deposit + rr.extFee;
         }
         assertEq(address(er).balance, owed + escrow);
     }

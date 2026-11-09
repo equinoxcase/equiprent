@@ -1,9 +1,9 @@
 import { defineChain, parseAbi } from "viem";
 
-export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 677);
-export const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? "https://rpc.botchain.ai";
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 968);
+export const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? "https://rpc.bohr.life";
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT ?? "") as `0x${string}`;
+export const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT ?? "0x02f4E40bcEdAEFF73cBCc28c3494cb4687f44A02") as `0x${string}`;
 
 export const chain = defineChain({
   id: CHAIN_ID,
@@ -32,7 +32,7 @@ export const abi = parseAbi([
   "function requestExtension(uint256 id, uint64 newEnd) payable",
   "function approveExtension(uint256 id)",
   "function cancelExtension(uint256 id)",
-  "function rentals(uint256) view returns (uint256 equipmentId, address owner, address renter, uint64 start, uint64 end, uint64 returnedAt, uint64 disputedAt, uint128 fee, uint128 deposit, uint16 feeBps, bool ownerHandover, bool renterHandover, uint8 status, uint64 extEnd, uint128 extFee, uint128 rate)",
+  "function getRental(uint256 id) view returns ((uint256 equipmentId, address owner, address renter, uint64 start, uint64 end, uint64 returnedAt, uint64 disputedAt, uint128 fee, uint128 deposit, uint16 feeBps, bool ownerHandover, bool renterHandover, uint8 status, uint64 extEnd, uint128 extFee, uint128 rate))",
   "function arbiter() view returns (address)",
   "function balances(address) view returns (uint256)",
   "function platformFeeBps() view returns (uint16)",

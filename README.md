@@ -7,6 +7,13 @@
     ARBITER=0xYourArbiter forge script script/Deploy.s.sol --rpc-url bohr_testnet --private-key $KEY --broadcast
 Copy the deployed address and the deploy block number into `.env` (CONTRACT_ADDRESS, START_BLOCK).
 
+Current testnet deployment (Bohr Testnet, chain 968, deployed from Remix):
+- Contract: 0x02f4E40bcEdAEFF73cBCc28c3494cb4687f44A02
+- Deploy block: 29827061
+- Arbiter: 0xCd75dc1b457C6d8eA90Fb2c825aE609E8267c9aB
+- `rentals` is now internal. Read a rental with `getRental(id)`, which returns the full struct.
+- A second, unused copy was deployed at block 29827092. Ignore it.
+
 ## 2. Run the backend locally
     cp .env.example .env   # fill in values
     docker compose up --build
