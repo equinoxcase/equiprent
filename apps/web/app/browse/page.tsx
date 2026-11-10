@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Cover from "@/components/Cover";
 import { get, bot } from "@/lib/api";
 import { CATEGORIES, LEVELS } from "@/lib/config";
 
@@ -44,6 +45,7 @@ export default function Home() {
       <div className="grid">
       {rows?.map((e) => (
         <div className="panel listing" key={e.id}>
+          <Cover images={e.metadata?.images} title={e.metadata?.title ?? `Equipment #${e.id}`} />
           <div className="top-row">
             <strong>{e.metadata?.title ?? `Equipment #${e.id}`}</strong>
             <span className="pill">{LEVELS[e.metadata?.verification_level ?? 1]}</span>

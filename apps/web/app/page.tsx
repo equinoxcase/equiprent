@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { get, bot } from "@/lib/api";
 import { CATEGORIES, LEVELS } from "@/lib/config";
+import Cover from "@/components/Cover";
 
 const STEPS = [
   { t: "Request dates", d: "Pick a machine and your dates. The rental fee and deposit are locked in the escrow contract." },
@@ -83,6 +84,7 @@ export default function Landing() {
             <div className="grid">
               {rows.map((e) => (
                 <Link className="panel listing" key={e.id} href={`/equipment/${e.id}`}>
+                  <Cover images={e.metadata?.images} title={e.metadata?.title ?? `Equipment #${e.id}`} />
                   <div className="top-row">
                     <strong>{e.metadata?.title ?? `Equipment #${e.id}`}</strong>
                     <span className="pill">{LEVELS[e.metadata?.verification_level ?? 1]}</span>

@@ -1,10 +1,11 @@
-import base64, binascii, hashlib, hmac, json, os, time
-from fastapi import FastAPI, Depends, HTTPException, Header, Query, Response
+import base64, binascii, hashlib, hmac, json, os, re, time
+from fastapi import FastAPI, Depends, HTTPException, Header, Query, Response, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from eth_account import Account
 from eth_account.messages import encode_defunct
-from sqlalchemy import select
+from sqlalchemy import select, func
 import db, storage, verification
 
 SECRET = os.getenv("AUTH_SECRET", "")
@@ -66,6 +67,12 @@ def auth_verify(v: Verify):
     return {"token": f"{signer}.{exp}.{_sign(signer, exp)}"}
 
 
+MAX_PHOTOS_PER_LISTING = 6
+MAX_PHOTOS_PER_USER = 200
+PHOTO_MAX_BYTES = 50 * 1024 * 1024
+PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
 # ---- Off-chain listing metadata. The hash in the URI anchors it on-chain. ----
 class Meta(BaseModel):
     category: str
@@ -74,6 +81,17 @@ class Meta(BaseModel):
     description: str = ""
     images: list[str] = []
     verification_level: int = 1
+
+    @field_validator("images")
+    @classmethod
+    def _images(cls, v: list[str]) -> list[str]:
+        if len(v) > MAX_PHOTOS_PER_LISTING:
+            raise ValueError(f"Use at most {MAX_PHOTOS_PER_LISTING} photos")
+        prefix = f"{PUBLIC_API_URL.rstrip('/')}/photos/"
+        for u in v:
+            if not (u.startswith(prefix) and re.fullmatch(r"[0-9a-f]{64}", u[len(prefix):])):
+                raise ValueError("Photos must be uploaded through this site")
+        return v
 
 
 @app.post("/metadata")
@@ -152,6 +170,79 @@ def my_rentals(user: str = Depends(current_user)):
         rows = s.scalars(select(db.Rental).where((db.Rental.renter == user) | (db.Rental.owner == user))
                          .order_by(db.Rental.id.desc())).all()
         return [{c.name: getattr(r, c.name) for c in r.__table__.columns} for r in rows]
+
+
+# ---- Listing photos: public, up to 50 MB each, content-addressed by SHA-256. ----
+def _sniff(raw: bytes) -> str | None:
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def _save_photo(user: str, raw: bytes, ctype: str, digest: str) -> None:
+    with db.Session() as s:
+        if s.get(db.Photo, digest):
+            return
+        n = s.scalar(select(func.count()).select_from(db.Photo).where(db.Photo.owner == user)) or 0
+        if n >= MAX_PHOTOS_PER_USER:
+            raise HTTPException(429, "Photo limit reached for this wallet")
+        key = f"photos/{digest}"
+        if storage.enabled():
+            try:
+                storage.put(key, raw, ctype)
+            except Exception:
+                raise HTTPException(503, "File storage is unavailable, try again shortly")
+        s.add(db.Photo(sha256=digest, owner=user, content_type=ctype, size=len(raw),
+                       data=b"" if storage.enabled() else raw, storage_key=key if storage.enabled() else None,
+                       created_at=int(time.time())))
+        s.commit()
+
+
+@app.post("/photos")
+async def upload_photo(request: Request, user: str = Depends(current_user)):
+    """The request body is the raw image file (no base64), so a 50 MB photo costs 50 MB, not 67 MB."""
+    ctype = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if ctype not in PHOTO_TYPES:
+        raise HTTPException(400, "Use a JPEG, PNG or WebP photo")
+    try:
+        declared = int(request.headers.get("content-length", "0"))
+    except ValueError:
+        declared = 0
+    if declared > PHOTO_MAX_BYTES:
+        raise HTTPException(413, "Photo is larger than 50 MB")
+    buf = bytearray()
+    async for chunk in request.stream():
+        buf.extend(chunk)
+        if len(buf) > PHOTO_MAX_BYTES:
+            raise HTTPException(413, "Photo is larger than 50 MB")
+    raw = bytes(buf)
+    if not raw:
+        raise HTTPException(400, "Empty file")
+    if _sniff(raw) != ctype:
+        raise HTTPException(400, "That file isn’t a valid photo")
+    digest = hashlib.sha256(raw).hexdigest()
+    await run_in_threadpool(_save_photo, user, raw, ctype, digest)
+    return {"url": f"{PUBLIC_API_URL.rstrip('/')}/photos/{digest}", "sha256": digest, "size": len(raw)}
+
+
+@app.get("/photos/{h}")
+def read_photo(h: str):
+    if not re.fullmatch(r"[0-9a-f]{64}", h):
+        raise HTTPException(404, "Not found")
+    with db.Session() as s:
+        p = s.get(db.Photo, h)
+        if not p:
+            raise HTTPException(404, "Not found")
+        try:
+            raw = storage.get(p.storage_key) if p.storage_key else p.data
+        except Exception:
+            raise HTTPException(503, "File storage is unavailable, try again shortly")
+        return Response(raw, media_type=p.content_type,
+                        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "public, max-age=31536000, immutable"})
 
 
 # ---- Dispute evidence. Files live in object storage; the hash is anchored on-chain by the submitter. ----

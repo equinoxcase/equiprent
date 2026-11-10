@@ -5,6 +5,7 @@ import { formatEther, parseEther } from "viem";
 import { API, CATEGORIES } from "@/lib/config";
 import { get } from "@/lib/api";
 import { useWallet, errText } from "@/lib/wallet";
+import PhotoPicker from "@/components/PhotoPicker";
 
 export default function EditEquipment() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +13,7 @@ export default function EditEquipment() {
   const { address, token, signIn, send } = useWallet();
   const [e, setE] = useState<any>(null);
   const [f, setF] = useState({ category: CATEGORIES[0], title: "", location: "", description: "", rate: "", deposit: "", active: true });
+  const [images, setImages] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (ev: any) => setF({ ...f, [k]: ev.target.value });
@@ -20,6 +22,7 @@ export default function EditEquipment() {
     get(`/equipment/${id}`).then((x) => {
       setE(x);
       const m = x.metadata ?? {};
+      setImages(m.images ?? []);
       setF({ category: m.category ?? CATEGORIES[0], title: m.title ?? "", location: m.location ?? "", description: m.description ?? "",
         rate: formatEther(BigInt(x.daily_rate_wei)), deposit: formatEther(BigInt(x.deposit_wei)), active: x.active });
     }).catch(() => setMsg("Equipment not found."));
@@ -43,7 +46,7 @@ export default function EditEquipment() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
         body: JSON.stringify({ category: f.category, title: f.title, location: f.location, description: f.description,
-          images: m.images ?? [] }),
+          images }),
       });
       if (!r.ok) throw new Error("Couldn’t save the listing details.");
       const { uri } = await r.json();
@@ -64,6 +67,7 @@ export default function EditEquipment() {
         <label htmlFor="t">Name</label><input id="t" value={f.title} onChange={set("title")} />
         <label htmlFor="l">Location</label><input id="l" value={f.location} onChange={set("location")} />
         <label htmlFor="d">Description</label><textarea id="d" rows={3} value={f.description} onChange={set("description")} />
+        <PhotoPicker value={images} onChange={setImages} />
         <div className="two">
           <div><label htmlFor="r">Daily rate (BOT)</label><input id="r" inputMode="decimal" value={f.rate} onChange={set("rate")} /></div>
           <div><label htmlFor="p">Deposit (BOT)</label><input id="p" inputMode="decimal" value={f.deposit} onChange={set("deposit")} /></div>
@@ -71,7 +75,7 @@ export default function EditEquipment() {
         <label htmlFor="a">
           <input id="a" type="checkbox" checked={f.active} onChange={(ev) => setF({ ...f, active: ev.target.checked })} /> Show in the marketplace
         </label>
-        {e.verification && <p className="note">This listing is {["", "", "Verified", "Inspected"][e.verification.level]}. Changing the name, category, location or description removes that until an admin reviews it again. Rate, deposit and visibility changes keep it.</p>}
+        {e.verification && <p className="note">This listing is {["", "", "Verified", "Inspected"][e.verification.level]}. Changing the name, category, location, description or photos removes that until an admin reviews it again. Rate, deposit and visibility changes keep it.</p>}
         <p className="note">Rate and deposit changes apply to new requests only. Rentals already requested keep the terms they were booked with.</p>
         <button disabled={!valid || busy} onClick={save}>Save changes</button>
         <p className="msg" role="status">{msg}</p>

@@ -85,6 +85,18 @@ class Evidence(Base):
     created_at: Mapped[int] = mapped_column(Integer)
 
 
+class Photo(Base):
+    """Public listing photos, keyed by the SHA-256 of the file. Large files go to the bucket when S3_BUCKET is set."""
+    __tablename__ = "photos"
+    sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner: Mapped[str] = mapped_column(String(42), index=True)
+    content_type: Mapped[str] = mapped_column(String(30))
+    size: Mapped[int] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary, default=b"")  # local development only
+    storage_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[int] = mapped_column(Integer)
+
+
 class ChainEvent(Base):
     __tablename__ = "chain_events"
     __table_args__ = (UniqueConstraint("tx_hash", "log_index"),)

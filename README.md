@@ -54,3 +54,10 @@ Pages: marketplace, equipment booking, my rentals, owner dashboard, list equipme
 - An admin wallet listed in `ADMIN_ADDRESSES` signs in at `/admin`, picks an equipment id, a level and a validity period, and the API signs the attestation with `VERIFIER_PRIVATE_KEY`. Expired or revoked attestations drop the listing back to Registered. Each attestation also pins the listing's details by hash, so if the owner changes the name, category, location or description the badge turns off automatically and `/admin` shows "Listing changed" until an admin reviews it and grants the level again. Rate, deposit and visibility changes don't affect it.
 - Anyone can check an attestation: `GET /equipment/{id}` returns the signed message, the signature and the signer, and `GET /verifier` returns the platform verifier address.
 - Keep the verifier key only on the api service. Losing it lets anyone forge badges, so rotate it and re-issue attestations if it leaks.
+
+## Listing photos
+
+- Owners add up to 6 photos (JPEG, PNG, WebP or iPhone HEIC, 50 MB each) when listing or editing equipment. The first photo is the cover.
+- HEIC photos are converted to JPEG in the browser. The browser also shrinks large photos to 2000 px before uploading, so listings load fast. Originals up to 50 MB are accepted.
+- `POST /photos` takes the raw image as the request body and returns a public URL (`/photos/<sha256>`). The URL goes into the listing metadata, so the metadata hash on-chain covers the photos too. Changing photos therefore removes a Verified or Inspected badge until an admin reviews the listing again.
+- Photos use the same bucket settings as dispute evidence (`S3_BUCKET` and the other `S3_*` variables). Set them on the api service so photos are not stored in the database. The `photos` table is created automatically on start.

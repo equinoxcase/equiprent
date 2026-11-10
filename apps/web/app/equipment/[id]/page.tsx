@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { get, bot } from "@/lib/api";
 import { LEVELS, CONTRACT, abi } from "@/lib/config";
 import { pub, useWallet, errText } from "@/lib/wallet";
+import Gallery from "@/components/Gallery";
 
 export default function Booking() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +41,7 @@ export default function Booking() {
 
   return (
     <>
+      <Gallery images={m?.images} title={m?.title ?? `Equipment #${e.id}`} />
       <div className="page-title">{m?.title ?? `Equipment #${e.id}`}</div>
       <div className="meta">{m?.location} · {LEVELS[m?.verification_level ?? 1]}{e.verification ? ` until ${new Date(e.verification.expires_at * 1000).toLocaleDateString()}` : ""}</div>
       {m?.description && <p>{m.description}</p>}
