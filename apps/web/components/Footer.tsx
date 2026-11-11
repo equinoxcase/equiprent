@@ -35,6 +35,11 @@ export default function Footer() {
               <a href={scan} target="_blank" rel="noreferrer">Block explorer</a>
               <Link href="/admin">Verification</Link>
             </div>
+            <div>
+              <h3>Community</h3>
+              <a href="https://x.com/equiprentapp" target="_blank" rel="noreferrer">X @equiprentapp</a>
+              <a href="https://botchain.ai" target="_blank" rel="noreferrer">BOT Chain</a>
+            </div>
           </div>
         </div>
         <div className="footer-chain">
